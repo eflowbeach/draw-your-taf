@@ -764,7 +764,7 @@ class CanvasDnD(tk.Frame):
             pass
 
         _id = self.sitepick.get()
-
+        self.taf = Ddict(dict)
         try:
             if self.saved[_id] == 1:
                 print "ALREADY SAVED"
@@ -780,11 +780,9 @@ class CanvasDnD(tk.Frame):
                 log = open(tafdir2, 'r')
             except:
                 print "Could not open " + tafdir2
-                self.plotTAF()
-                self.plotTAF_vis()
                 return
 
-        self.taf = Ddict(dict)
+
         lines = log.readlines()
         self.site = ''
         found = 0
