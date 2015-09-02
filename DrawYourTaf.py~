@@ -3,7 +3,7 @@ import Tkinter as tk
 import tkMessageBox
 import re
 
-pmwpath = "./Pmw"
+pmwpath = "/data/local/"
 sys.path.append(pmwpath)
 import Pmw
 
