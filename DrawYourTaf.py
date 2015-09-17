@@ -16,7 +16,6 @@ except ImportError:
 
 
 # Configure
-
 taf_out_file = './taf_out_file/'
 tafdir2 = './tafout2/'
 sites = ["KCRW", "KHTS", "KPKB", "KCKB", "KEKN", "KBKW"]
@@ -38,8 +37,6 @@ pct_graph_width = pct_width_raxis - pct_width_laxis
 pct_graph_height = pct_bot - pct_top
 graph_height = pct_graph_height * height
 graph_height_vis = pct_graph_height * height_vis
-#########################
-# heights = ["080","031","020","010","006","002","001"]
 heights = ["100", "030", "020", "010", "005", "001"]
 visbys = ["10", "6", "3", "1", "0.5", "0.25", "0.1"]
 
@@ -68,7 +65,6 @@ if not os.path.exists(taf_out_file):
 if not os.path.exists(tafdir2):
     os.makedirs(tafdir2)
 
-
 class KeyDict(dict):
     def __init__(self, default=None):
         super(KeyDict, self).__init__()
@@ -78,7 +74,6 @@ class KeyDict(dict):
         if key not in self:
             self[key] = self.default()
         return dict.__getitem__(self, key)
-
 
 class TafCanvas(Tk.Frame):
     def __init__(self, master):
@@ -115,7 +110,6 @@ class TafCanvas(Tk.Frame):
         self.c.create_line(pct_width_raxis * width, pct_top * height, pct_width_raxis * width, pct_bot * height,
                            fill=axis_color)
 
-        # x, y1 = self.graph_coord_from_taf(0, 10000)
         x, y2 = self.graph_coord_from_taf(0, 3000)
         x, y3 = self.graph_coord_from_taf(0, 1000)
         x, y4 = self.graph_coord_from_taf(0, 500)
@@ -161,17 +155,20 @@ class TafCanvas(Tk.Frame):
         self.tafpackage = (year, month, tafday, self.tafphour, tmin, jsec, wday, yday, dst)
         print tafhour
 
+        # Grid Labels
         for i in range(25):
             (year, month, tafday, tafhour, tmin, jsec, wday, yday, dst) = \
                 time.gmtime(time.mktime(self.tafpackage) + i * 3600)
 
-            # time and vertical lines/X-axis Legend
+            # Time and vertical lines/X-axis Legend
             self.c.create_text(i * pct_graph_width * width / 24 + pct_width_laxis * width, height * 0.05, text=tafhour,
                                fill=axis_color)
+            # Create Grid
             self.c.create_line(i * pct_graph_width * width / 24 + pct_width_laxis * width, pct_top * height,
                                i * pct_graph_width * width / 24 + pct_width_laxis * width, pct_bot * height,
                                fill=axis_color, dash=(4, 4))
 
+        # Ceiling Labels
         for index, i in enumerate(range(len(heights))):
             j = float(heights[i]) * 100
             self.c.create_text(pct_width_laxis * width - 20,
@@ -196,7 +193,8 @@ class TafCanvas(Tk.Frame):
 
         self.c.bind("<Button-1>", self.draw_fx_cig)
         self.c.bind("<Button-3>", self.delete_point_cig)
-        # VIS CANVAS ##########################
+
+        # VIS CANVAS
         labelvis = Tk.Label(self, text="Visibility")
         labelvis.pack(pady=10)
 
@@ -302,12 +300,6 @@ class TafCanvas(Tk.Frame):
                                  bd=3, bg='white', relief="raised", anchor=Tk.W, justify=Tk.LEFT)
         self.taf_label.grid(row=0, column=0, sticky=Tk.W, padx=10)
 
-
-        # self.cloud_level.set('Low')
-        # layers = ["Ceiling"]#"High","Mid","Low",]
-        # for i in range(len(layers)):
-        # self.rad[i] = Tk.Radiobutton(self.Frame,text=layers[i],variable=self.cloud_level,value=layers[i], selectcolor="yellow",fg='#005306')
-        # self.rad[i].grid(row=i,column=5)
 
         ########################
         cigarr = ["FEW", "SCT", "BKN", "OVC"]
@@ -417,7 +409,6 @@ class TafCanvas(Tk.Frame):
 
     def combine_taf(self):
         f = open(taf_out_file + 'TAF', 'w')
-        # f.write('FTUS46 KPQR 202300\n')
         ok = 0
         for i in sites:
             try:
@@ -497,19 +488,19 @@ class TafCanvas(Tk.Frame):
         if graph_visibility > 0.5 and wx_type == "FG":
             wx_type = " BR"
         if graph_visibility < 0.1:
-            graph_visibility = ' 0SM' + wx_type + wx_type_two
+            graph_visibility = ' 0SM ' + wx_type + wx_type_two
         elif graph_visibility < 0.25:
-            graph_visibility = ' M1/4SM' + wx_type + wx_type_two
+            graph_visibility = ' M1/4SM ' + wx_type + wx_type_two
         elif 0.25 <= graph_visibility < 0.5:
-            graph_visibility = ' 1/4SM' + wx_type + wx_type_two
+            graph_visibility = ' 1/4SM ' + wx_type + wx_type_two
         elif 0.5 <= graph_visibility < 0.75:
             graph_visibility = ' 1/2SM ' + wx_type + wx_type_two
         elif 0.75 <= graph_visibility < 1.0:
-            graph_visibility = ' 3/4SM' + wx_type + wx_type_two
+            graph_visibility = ' 3/4SM ' + wx_type + wx_type_two
         elif 1.0 <= graph_visibility < 1.5:
-            graph_visibility = ' 1SM' + wx_type + wx_type_two
+            graph_visibility = ' 1SM ' + wx_type + wx_type_two
         elif 1.5 <= graph_visibility < 2.0:
-            graph_visibility = ' 1 1/2SM' + wx_type + wx_type_two
+            graph_visibility = ' 1 1/2SM ' + wx_type + wx_type_two
         elif graph_visibility > 6.9:
             graph_visibility = 'P6SM'
         else:
@@ -620,6 +611,14 @@ class TafCanvas(Tk.Frame):
         for i in vis:
             self.cv.delete(i)
 
+        lines = self.c.find_withtag("line_cig")
+        for i in lines:
+            self.c.delete(i)
+
+        vis_lines = self.cv.find_withtag("line_vis")
+        for i in vis_lines:
+            self.cv.delete(i)
+
     def delete_point_cig(self, event):
         point = self.c.find_closest(event.x, event.y)
         cigs = self.c.find_withtag("Ceiling")
@@ -641,7 +640,7 @@ class TafCanvas(Tk.Frame):
 
     def draw_cig_line(self):
         # try:
-        line = self.c.find_withtag("line")
+        line = self.c.find_withtag("line_cig")
         self.c.delete(line)
         points = self.c.find_withtag("Ceiling")
         plot = []
@@ -654,7 +653,7 @@ class TafCanvas(Tk.Frame):
             plot.append(coords[1] + 5)
 
         try:
-            self.test = self.c.create_line(plot, tags="line", fill=fx_color, width=2.0)
+            self.test = self.c.create_line(plot, tags="line_cig", fill=fx_color, width=2.0)
         except:
             pass
         self.label_taf()
