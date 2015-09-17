@@ -886,10 +886,10 @@ class TafCanvas(Tk.Frame):
 
         t = re.findall('(\d{6})Z', line.upper())
         ttime = re.findall('FM(\d{6})', line.upper())
-        tempo = re.findall('TEMPO (\d{4})\/(\d{4})', line.upper())
+        tempo = re.findall('TEMPO (\d{4})/(\d{4})', line.upper())
         # c=re.findall('(VV\d{3})|(FEW\d{3})|(SCT\d{3})|(BKN\d{3})|(OVC\d{3})',line.upper())
         c = re.findall('VV(\d{3})|BKN(\d{3})|OVC(\d{3})', line.upper())
-        v = re.findall('(P\d)SM|(\d\d)SM|(\d)SM|(M1\/4)SM|(\d\/\d)SM|(\d \d\/\d)SM/', line.upper())
+        v = re.findall('(P\d)SM|(\d\d)SM|(\d)SM|(M1/4)SM|(\d/\d)SM|(\d \d/\d)SM/', line.upper())
         w = re.findall('(\d{5})KT|(\d{5})G(\d+)KT', line.upper())
 
         if t:
