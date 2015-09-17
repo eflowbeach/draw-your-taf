@@ -1,6 +1,7 @@
 import sys
 import os
 import time
+import calendar
 import copy
 import math
 import Tkinter as Tk
@@ -79,6 +80,7 @@ class TafCanvas(Tk.Frame):
     def __init__(self, master):
         self.master = master
         self.loc = self.dragged = 0
+        self.site = ''
 
         self.tafbegin_group, self.tafend_group, self.begin_month, self.begin_day, self.begin_year, self.end_month, \
             self.end_day, self.end_year = '', '', '', '', '', '', '', ''
@@ -142,26 +144,27 @@ class TafCanvas(Tk.Frame):
             y5,
             fill="#FFD1F3")
 
-        (year, month, tafday, tafhour, tmin, jsec, wday, yday, dst) = time.gmtime()
-        if 18 <= tafhour <= 23:
-            self.tafphour = 18
-        elif 12 <= tafhour <= 18:
-            self.tafphour = 12
-        elif 6 <= tafhour <= 12:
-            self.tafphour = 6
-        elif 0 <= tafhour <= 6:
-            self.tafphour = 0
+        (year, month, taf_day, taf_hour, tmin, jsec, wday, yday, dst) = time.gmtime()
+        if 18 <= taf_hour <= 23:
+            self.taf_package_hour = 18
+        elif 12 <= taf_hour < 18:
+            self.taf_package_hour = 12
+        elif 6 <= taf_hour < 12:
+            self.taf_package_hour = 6
+        elif 0 <= taf_hour < 6:
+            self.taf_package_hour = 0
 
-        self.tafpackage = (year, month, tafday, self.tafphour, tmin, jsec, wday, yday, dst)
-        print tafhour
+        self.tafpackage = (year, month, taf_day, self.taf_package_hour, tmin, jsec, wday, yday, dst)
+        print "TAF HOUR:", taf_hour, self.taf_package_hour
 
         # Grid Labels
         for i in range(25):
-            (year, month, tafday, tafhour, tmin, jsec, wday, yday, dst) = \
-                time.gmtime(time.mktime(self.tafpackage) + i * 3600)
+            (year, month, taf_day, taf_hour, tmin, jsec, wday, yday, dst) = \
+                time.gmtime(calendar.timegm(self.tafpackage) + i * 3600)
+            print year, month, taf_day, taf_hour, tmin, jsec, wday, yday, dst
 
             # Time and vertical lines/X-axis Legend
-            self.c.create_text(i * pct_graph_width * width / 24 + pct_width_laxis * width, height * 0.05, text=tafhour,
+            self.c.create_text(i * pct_graph_width * width / 24 + pct_width_laxis * width, height * 0.05, text=taf_hour,
                                fill=axis_color)
             # Create Grid
             self.c.create_line(i * pct_graph_width * width / 24 + pct_width_laxis * width, pct_top * height,
@@ -214,7 +217,6 @@ class TafCanvas(Tk.Frame):
         self.cv.create_line(pct_width_raxis * width, pct_top * height_vis, pct_width_raxis * width,
                             pct_bot * height_vis, fill=axis_color)
 
-        x, y1 = self.graph_coord_from_taf_vis(0, 10)
         x, y2 = self.graph_coord_from_taf_vis(0, 6)
         x, y3 = self.graph_coord_from_taf_vis(0, 3)
         x, y4 = self.graph_coord_from_taf_vis(0, 1)
@@ -263,11 +265,11 @@ class TafCanvas(Tk.Frame):
 
         # x-axis set-up
         for i in range(25):
-            (year, month, tafday, tafhour, tmin, jsec, wday, yday, dst) = time.gmtime(
-                time.mktime(self.tafpackage) + i * 3600)
+            (year, month, taf_day, taf_hour, tmin, jsec, wday, yday, dst) = time.gmtime(
+                calendar.timegm(self.tafpackage) + i * 3600)
             # time and vertical lines/X-axis Legend
             self.cv.create_text(i * pct_graph_width * width / 24 + pct_width_laxis * width, height_vis * 0.05,
-                                text=tafhour, fill=axis_color)
+                                text=taf_hour, fill=axis_color)
             self.cv.create_line(i * pct_graph_width * width / 24 + pct_width_laxis * width, pct_top * height_vis,
                                 i * pct_graph_width * width / 24 + pct_width_laxis * width, pct_bot * height_vis,
                                 fill=axis_color, dash=(4, 4))
@@ -441,17 +443,17 @@ class TafCanvas(Tk.Frame):
             return str(x)
 
     def format_time(self, graphtime):
-        (year, month, tafday, tafhour, tmin, jsec, wday, yday, dst) = time.gmtime(
+        (year, month, taf_day, taf_hour, tmin, jsec, wday, yday, dst) = time.gmtime(
             time.mktime(self.tafpackage) + int(graphtime) * 3600)
-        if tafhour < 10:
-            tafhour = "0" + str(int(tafhour))
+        if taf_hour < 10:
+            taf_hour = "0" + str(int(taf_hour))
         else:
-            tafhour = str(int(tafhour))
-        if tafday < 10:
-            tafday = "0" + str(int(tafday))
+            taf_hour = str(int(taf_hour))
+        if taf_day < 10:
+            taf_day = "0" + str(int(taf_day))
         else:
-            tafday = str(int(tafday))
-        return tafday + tafhour
+            taf_day = str(int(taf_day))
+        return taf_day + taf_hour
 
     def format_cig(self, graph_ceiling):
         graph_ceiling = int(graph_ceiling / 100)
@@ -581,8 +583,8 @@ class TafCanvas(Tk.Frame):
                 taf = "TAF\n" + self.sitepick.get() + ' ' + self.lt_ten_padding(day) + self.lt_ten_padding(
                     jhour) + self.lt_ten_padding(
                     jmin) + "Z " + self.lt_ten_padding(day) + self.lt_ten_padding(
-                    self.tafphour) + "/04" + self.lt_ten_padding(
-                    self.tafphour) + " 00000KT "
+                    self.taf_package_hour) + "/04" + self.lt_ten_padding(
+                    self.taf_package_hour) + " 00000KT "
                 my_vis = self.format_vis(tafdata[mytaf[0]]['vis'])
                 my_cig = self.format_cig(tafdata[mytaf[0]]['cig'])
                 if my_cig != 'SKC':
@@ -800,7 +802,7 @@ class TafCanvas(Tk.Frame):
                 return
 
         lines = log.readlines()
-        self.site = ''
+
         found = 0
         for line in lines:
             # print line
@@ -834,9 +836,6 @@ class TafCanvas(Tk.Frame):
             x1, y1 = self.graph_coord_from_taf(x, y)
             x1 = pct_width_laxis * width + x1
             y1 = y1 - pct_bot * height + pct_top * height
-
-            points.append(x1)
-            points.append(y1)
             self.c.create_oval(x1 - 4, y1 - 4, x1 + 4, y1 + 4, fill=dot_color, tag="Ceiling")
 
         self.draw_cig_line()
@@ -848,9 +847,6 @@ class TafCanvas(Tk.Frame):
             x, y = self.taf[_id]['fxtime'][index], float(self.taf[_id]['vis'][index])
             x1, y1 = self.graph_coord_from_taf_vis(x, y)
             x1 = pct_width_laxis * width + x1
-
-            points.append(x1)
-            points.append(y1)
             self.cv.create_oval(x1 - 4, y1 - 4, x1 + 4, y1 + 4, fill=dot_color, tag="Visibility")
 
         self.draw_vis_line()
