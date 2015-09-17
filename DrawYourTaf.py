@@ -1,13 +1,21 @@
-import sys, os, string, time, copy, math
-import Tkinter as tk
+import sys
+import os
+import time
+import copy
+import math
+import Tkinter as Tk
 import tkMessageBox
 import re
 
-pmwpath = "./Pmw"
-sys.path.append(pmwpath)
-import Pmw
+try:
+    import Pmw
+except ImportError:
+    pmwpath = "./Pmw"
+    sys.path.append(pmwpath)
+    import Pmw
 
-####### Configure #######
+
+# Configure
 
 tafout = './tafout/'
 tafdir2 = './tafout2/'
@@ -38,7 +46,7 @@ points = []
 
 tag1 = "theline"
 
-_ValidVsby = { \
+_ValidVsby = {
     '0': 0.1,
     'M1/4': 0.1,
     '1/4': 0.25,
@@ -52,38 +60,47 @@ _ValidVsby = { \
     '5': 5.0,
     '6': 6.0,
     'P6': 10.0
-    }
+}
 
 (year, month, day, jhour, jmin, jsec, wday, yday, dst) = time.gmtime()
 
+if not os.path.exists(tafout):
+    os.makedirs(tafout)
+if not os.path.exists(tafdir2):
+    os.makedirs(tafdir2)
 
-class Ddict(dict):
+
+class KeyDict(dict):
     def __init__(self, default=None):
+        super(KeyDict, self).__init__()
         self.default = default
 
     def __getitem__(self, key):
-        if not self.has_key(key):
+        if key not in self:
             self[key] = self.default()
         return dict.__getitem__(self, key)
 
 
-class CanvasDnD(tk.Frame):
+class TafCanvas(Tk.Frame):
     def __init__(self, master):
         self.master = master
         self.loc = self.dragged = 0
 
-        self.tafbegin_group, self.tafend_group, self.begin_month, self.begin_day, self.begin_year, self.end_month, self.end_day, self.end_year = '', '', '', '', '', '', '', ''
+        self.tafbegin_group, self.tafend_group, self.begin_month, self.begin_day, self.begin_year, self.end_month, \
+            self.end_day, self.end_year = '', '', '', '', '', '', '', ''
+        
+        # Set up dictionaries
         self.rad = {}
         self.saved = {}
         self.test = 0
-        self.cloud_level = tk.StringVar()
+        self.cloud_level = Tk.StringVar()
 
-        tk.Frame.__init__(self, master)
+        Tk.Frame.__init__(self, master)
 
-        labelcig = tk.Label(self, text="Ceiling")
-        labelcig.pack(pady=10)
+        label_cig = Tk.Label(self, text="Ceiling")
+        label_cig.pack(pady=10)
 
-        canvas = tk.Canvas(self, width=800, height=300, relief=tk.RIDGE, background="white", borderwidth=1)
+        canvas = Tk.Canvas(self, width=800, height=300, relief=Tk.RIDGE, background="white", borderwidth=1)
         self.c = canvas
 
         # Cig Canvas #############
@@ -99,11 +116,11 @@ class CanvasDnD(tk.Frame):
         self.c.create_line(pct_width_raxis * width, pct_top * height, pct_width_raxis * width, pct_bot * height,
                            fill=axis_color)
 
-        x, y1 = self.toGraphCoordfromTAF(0, 10000)
-        x, y2 = self.toGraphCoordfromTAF(0, 3000)
-        x, y3 = self.toGraphCoordfromTAF(0, 1000)
-        x, y4 = self.toGraphCoordfromTAF(0, 500)
-        x, y5 = self.toGraphCoordfromTAF(0, 100)
+        # x, y1 = self.graph_coord_from_taf(0, 10000)
+        x, y2 = self.graph_coord_from_taf(0, 3000)
+        x, y3 = self.graph_coord_from_taf(0, 1000)
+        x, y4 = self.graph_coord_from_taf(0, 500)
+        x, y5 = self.graph_coord_from_taf(0, 100)
 
         # VFR
         self.c.create_rectangle(pct_width_laxis * width, pct_top * height, pct_width_raxis * width, y2, fill="#A9FFA6")
@@ -133,13 +150,13 @@ class CanvasDnD(tk.Frame):
             fill="#FFD1F3")
 
         (year, month, tafday, tafhour, tmin, jsec, wday, yday, dst) = time.gmtime()
-        if tafhour > 18 and tafhour <= 23:
+        if 18 <= tafhour <= 23:
             self.tafphour = 18
-        elif tafhour > 12 and tafhour <= 18:
+        elif 12 <= tafhour <= 18:
             self.tafphour = 12
-        elif tafhour > 6 and tafhour <= 12:
+        elif 6 <= tafhour <= 12:
             self.tafphour = 6
-        elif tafhour > 0 and tafhour <= 6:
+        elif 0 <= tafhour <= 6:
             self.tafphour = 0
 
         self.tafpackage = (year, month, tafday, self.tafphour, tmin, jsec, wday, yday, dst)
@@ -165,27 +182,27 @@ class CanvasDnD(tk.Frame):
 
 
         # other important thresholds
-        x, y = self.toGraphCoordfromTAF(0, 2000)
+        x, y = self.graph_coord_from_taf(0, 2000)
         self.c.create_line(pct_width_laxis * width, y,
                            24 * pct_graph_width * width / 24 + pct_width_laxis * width, y, fill=axis_color, dash=(4, 4))
 
-        x, y = self.toGraphCoordfromTAF(0, 600)
+        x, y = self.graph_coord_from_taf(0, 600)
         self.c.create_line(pct_width_laxis * width, y,
                            24 * pct_graph_width * width / 24 + pct_width_laxis * width, y, fill=axis_color, dash=(4, 4))
 
-        canvas.pack(expand=1, fill=tk.BOTH)
+        canvas.pack(expand=1, fill=Tk.BOTH)
         canvas.tag_bind("Ceiling", "<ButtonPress-2>", self.down)
         canvas.tag_bind("Ceiling", "<ButtonRelease-2>", self.chkup)
         canvas.tag_bind("Ceiling", "<Enter>", self.enter)
         canvas.tag_bind("Ceiling", "<Leave>", self.leave)
 
-        self.c.bind("<Button-1>", self.drawFx)
-        self.c.bind("<Button-3>", self.deletePoint)
+        self.c.bind("<Button-1>", self.draw_fx_cig)
+        self.c.bind("<Button-3>", self.delete_point_cig)
         # VIS CANVAS ##########################
-        labelvis = tk.Label(self, text="Visibility")
+        labelvis = Tk.Label(self, text="Visibility")
         labelvis.pack(pady=10)
 
-        canvas_vis = tk.Canvas(self, width=800, height=height_vis, relief=tk.RIDGE, background="white", borderwidth=1)
+        canvas_vis = Tk.Canvas(self, width=800, height=height_vis, relief=Tk.RIDGE, background="white", borderwidth=1)
         self.cv = canvas_vis
 
 
@@ -201,11 +218,11 @@ class CanvasDnD(tk.Frame):
         self.cv.create_line(pct_width_raxis * width, pct_top * height_vis, pct_width_raxis * width,
                             pct_bot * height_vis, fill=axis_color)
 
-        x, y1 = self.toGraphCoordfromTAF_vis(0, 10)
-        x, y2 = self.toGraphCoordfromTAF_vis(0, 6)
-        x, y3 = self.toGraphCoordfromTAF_vis(0, 3)
-        x, y4 = self.toGraphCoordfromTAF_vis(0, 1)
-        x, y5 = self.toGraphCoordfromTAF_vis(0, 0.1)
+        x, y1 = self.graph_coord_from_taf_vis(0, 10)
+        x, y2 = self.graph_coord_from_taf_vis(0, 6)
+        x, y3 = self.graph_coord_from_taf_vis(0, 3)
+        x, y4 = self.graph_coord_from_taf_vis(0, 1)
+        x, y5 = self.graph_coord_from_taf_vis(0, 0.1)
 
         # VFR
         self.cv.create_rectangle(pct_width_laxis * width, pct_top * height_vis, pct_width_raxis * width, y2,
@@ -235,15 +252,15 @@ class CanvasDnD(tk.Frame):
             y5,
             fill="#FFD1F3")
 
-        x, y = self.toGraphCoordfromTAF_vis(0, 2)
+        x, y = self.graph_coord_from_taf_vis(0, 2)
         self.cv.create_line(pct_width_laxis * width, y,
                             24 * pct_graph_width * width / 24 + pct_width_laxis * width, y, fill=axis_color,
                             dash=(4, 4))
-        x, y = self.toGraphCoordfromTAF_vis(0, 0.5)
+        x, y = self.graph_coord_from_taf_vis(0, 0.5)
         self.cv.create_line(pct_width_laxis * width, y,
                             24 * pct_graph_width * width / 24 + pct_width_laxis * width, y, fill=axis_color,
                             dash=(4, 4))
-        x, y = self.toGraphCoordfromTAF_vis(0, 0.25)
+        x, y = self.graph_coord_from_taf_vis(0, 0.25)
         self.cv.create_line(pct_width_laxis * width, y,
                             24 * pct_graph_width * width / 24 + pct_width_laxis * width, y, fill=axis_color,
                             dash=(4, 4))
@@ -263,134 +280,134 @@ class CanvasDnD(tk.Frame):
         for index, i in enumerate(range(len(visbys))):
             j = float(visbys[i])
             test = abs(graph_height_vis - (
-            (graph_height_vis * math.log10(j) / 2) + graph_height_vis / 2.0)) + pct_top * height_vis
+                (graph_height_vis * math.log10(j) / 2) + graph_height_vis / 2.0)) + pct_top * height_vis
             self.cv.create_text(pct_width_laxis * width - 20, test, text=visbys[index], fill=axis_color)
 
-        self.cv.pack(expand=1, fill=tk.BOTH)
+        self.cv.pack(expand=1, fill=Tk.BOTH)
         self.cv.tag_bind("Visibility", "<ButtonPress-2>", self.down_vis)
         self.cv.tag_bind("Visibility", "<ButtonRelease-2>", self.chkup)
         self.cv.tag_bind("Visibility", "<Enter>", self.enter)
         self.cv.tag_bind("Visibility", "<Leave>", self.leave)
-        self.cv.bind("<Button-1>", self.drawFx_vis)
-        self.cv.bind("<Button-3>", self.deletePoint_vis)
+        self.cv.bind("<Button-1>", self.draw_fx_vis)
+        self.cv.bind("<Button-3>", self.delete_point_vis)
 
 
         # Controls ##########################
-        self.Frame_right = tk.Frame(root, bd=2, relief='flat', padx=5, pady=5, width=width)
+        self.Frame_right = Tk.Frame(root, bd=2, relief='flat', padx=5, pady=5, width=width)
         self.Frame_right.grid(row=0, column=1)
 
-        self.Frame = tk.Frame(self.Frame_right, bd=2, relief='groove', padx=5, pady=5, width=width)
+        self.Frame = Tk.Frame(self.Frame_right, bd=2, relief='groove', padx=5, pady=5, width=width)
         self.Frame.grid(row=1, column=0, pady=40)
 
-        self.taflabel = tk.Label(self.Frame_right,
+        self.taflabel = Tk.Label(self.Frame_right,
                                  text="Click on graphs \nto generate TAF\n\nTAF will show up here after\n you have both visibility and ceilings.\n\n1) Left click will place points\n2) Middle click to drag/move\n3) Right click to delete",
-                                 bd=3, bg='white', relief="raised", anchor=tk.W, justify=tk.LEFT)
-        self.taflabel.grid(row=0, column=0, sticky=tk.W, padx=10)
+                                 bd=3, bg='white', relief="raised", anchor=Tk.W, justify=Tk.LEFT)
+        self.taflabel.grid(row=0, column=0, sticky=Tk.W, padx=10)
 
 
         # self.cloud_level.set('Low')
         # layers = ["Ceiling"]#"High","Mid","Low",]
         # for i in range(len(layers)):
-        # self.rad[i] = tk.Radiobutton(self.Frame,text=layers[i],variable=self.cloud_level,value=layers[i], selectcolor="yellow",fg='#005306')
+        # self.rad[i] = Tk.Radiobutton(self.Frame,text=layers[i],variable=self.cloud_level,value=layers[i], selectcolor="yellow",fg='#005306')
         # self.rad[i].grid(row=i,column=5)
 
         ########################
         cigarr = ["FEW", "SCT", "BKN", "OVC"]
-        # self.skypick = tk.StringVar()
+        # self.skypick = Tk.StringVar()
         # self.skyoption = Pmw.OptionMenu(self.Frame,
         # menubutton_textvariable = self.skypick,
         # items = cigarr,
         # initialitem="OVC",
-        # command = lambda i=0: self.drawLine()
+        # command = lambda i=0: self.draw_cig_line()
         # )
         # self.skyoption.grid(row=0,column=6)
 
-        # self.skypick = tk.StringVar()
+        # self.skypick = Tk.StringVar()
         # self.skyoption = Pmw.OptionMenu(self.Frame,
         # menubutton_textvariable = self.skypick,
         # items = cigarr,
         # initialitem="BKN",
-        # command = lambda i=0: self.drawLine()
+        # command = lambda i=0: self.draw_cig_line()
         # )
         # self.skyoption.grid(row=1,column=6)
 
-        self.skypick = tk.StringVar()
+        self.skypick = Tk.StringVar()
         self.skyoption = Pmw.OptionMenu(self.Frame,
                                         menubutton_textvariable=self.skypick,
                                         items=cigarr,
                                         initialitem="BKN",
-                                        command=lambda i=0: self.drawLine()
+                                        command=lambda i=0: self.draw_cig_line()
                                         )
         self.skyoption.grid(row=1, column=1)
         ####################
-        self.sitelabel = tk.Label(self.Frame, text="Site:", bd=3, fg='#005306', relief="flat", anchor=tk.W,
-                                  justify=tk.LEFT)
-        self.sitelabel.grid(row=0, column=0, sticky=tk.W, padx=10)
+        self.sitelabel = Tk.Label(self.Frame, text="Site:", bd=3, fg='#005306', relief="flat", anchor=Tk.W,
+                                  justify=Tk.LEFT)
+        self.sitelabel.grid(row=0, column=0, sticky=Tk.W, padx=10)
 
-        self.ciglabel = tk.Label(self.Frame, text="Ceiling:", bd=3, fg='#005306', relief="flat", anchor=tk.W,
-                                 justify=tk.LEFT)
-        self.ciglabel.grid(row=1, column=0, sticky=tk.W, padx=10)
+        self.ciglabel = Tk.Label(self.Frame, text="Ceiling:", bd=3, fg='#005306', relief="flat", anchor=Tk.W,
+                                 justify=Tk.LEFT)
+        self.ciglabel.grid(row=1, column=0, sticky=Tk.W, padx=10)
 
-        self.wxlabel = tk.Label(self.Frame, text="Wx:", bd=3, fg='#005306', relief="flat", anchor=tk.W, justify=tk.LEFT)
-        self.wxlabel.grid(row=3, column=0, sticky=tk.W, padx=10)
+        self.wxlabel = Tk.Label(self.Frame, text="Wx:", bd=3, fg='#005306', relief="flat", anchor=Tk.W, justify=Tk.LEFT)
+        self.wxlabel.grid(row=3, column=0, sticky=Tk.W, padx=10)
 
-        self.wxpick = tk.StringVar()
+        self.wxpick = Tk.StringVar()
         wxarr = ['', "FG", "BR", "FZFG", "-RA", "RA", "+RA", "-SN", "SN", "+SN", "-DZ", "DZ", "+DZ", "-TSRA", "TSRA",
                  "+TSRA"]
         self.wxoption = Pmw.OptionMenu(self.Frame,
                                        menubutton_textvariable=self.wxpick,
                                        items=wxarr,
                                        initialitem="",
-                                       command=lambda i=0: self.labelTaf()
+                                       command=lambda i=0: self.label_taf()
 
                                        )
         self.wxoption.grid(row=3, column=1)
 
-        self.wxpick2 = tk.StringVar()
+        self.wx_pick_two = Tk.StringVar()
         self.wx2option = Pmw.OptionMenu(self.Frame,
-                                        menubutton_textvariable=self.wxpick2,
+                                        menubutton_textvariable=self.wx_pick_two,
                                         items=wxarr,
                                         initialitem="",
-                                        command=lambda i=0: self.labelTaf()
+                                        command=lambda i=0: self.label_taf()
                                         )
         self.wx2option.grid(row=3, column=2)
 
-        self.sitepick = tk.StringVar()
+        self.sitepick = Tk.StringVar()
         self.siteoption = Pmw.OptionMenu(self.Frame,
                                          menubutton_textvariable=self.sitepick,
                                          items=sites,
                                          initialitem="KCRW",
-                                         command=lambda i=0: self.readTAF()
+                                         command=lambda i=0: self.read_taf()
                                          )
         self.siteoption.grid(row=0, column=1)
 
-        self.saveTAF = tk.Button(self.Frame, text="Save", command=self.saveTAF, bg="#DCFF92")
-        self.saveTAF.grid(row=4, column=1, pady=20)
+        self.save_taf = Tk.Button(self.Frame, text="Save", command=self.save_taf, bg="#DCFF92")
+        self.save_taf.grid(row=4, column=1, pady=20)
 
-        self.saveTAF = tk.Button(self.Frame, text="Combine TAFs", command=self.combineTAF, bg="#DCFF92")
-        self.saveTAF.grid(row=5, column=1, pady=0)
+        self.save_taf = Tk.Button(self.Frame, text="Combine TAFs", command=self.combine_taf, bg="#DCFF92")
+        self.save_taf.grid(row=5, column=1, pady=0)
 
-        statuslabel = tk.Label(self.Frame_right, text="Status:", bd=0, relief="flat", anchor=tk.W, justify=tk.LEFT)
-        statuslabel.grid(row=2, column=0, sticky=tk.W)
+        statuslabel = Tk.Label(self.Frame_right, text="Status:", bd=0, relief="flat", anchor=Tk.W, justify=Tk.LEFT)
+        statuslabel.grid(row=2, column=0, sticky=Tk.W)
 
         self.sitelabels = {}
         for index, site in enumerate(sites):
-            self.sitelabels[site] = tk.Label(self.Frame_right, text=" " + site + " ", bd=2, fg='black', bg='#B2B4A8',
-                                             relief="raised", anchor=tk.W, justify=tk.LEFT)
-            self.sitelabels[site].grid(row=index + 3, column=0, sticky=tk.W)
+            self.sitelabels[site] = Tk.Label(self.Frame_right, text=" " + site + " ", bd=2, fg='black', bg='#B2B4A8',
+                                             relief="raised", anchor=Tk.W, justify=Tk.LEFT)
+            self.sitelabels[site].grid(row=index + 3, column=0, sticky=Tk.W)
 
-        self.cleanTAFDirectory()
-        self.readTAF()
+        self.clean_taf_directory()
+        self.read_taf()
 
-    def cleanTAFDirectory(self):
+    def clean_taf_directory(self):
         for i in sites:
             try:
                 os.remove(tafout + 'TAF.' + i)
             except:
                 print "Could not remove " + tafout + 'TAF.' + i
 
-    def saveTAF(self):
-        taf = self.labelTaf() + '=\n\n'
+    def save_taf(self):
+        taf = self.label_taf() + '=\n\n'
         print taf
         _id = self.sitepick.get()
         self.saved[_id] = 1
@@ -400,9 +417,9 @@ class CanvasDnD(tk.Frame):
         f.close()
         print self.saved
 
-    def combineTAF(self):
+    def combine_taf(self):
         f = open(tafout + 'TAF', 'w')
-        f.write('FTUS46 KPQR 202300\n')
+        # f.write('FTUS46 KPQR 202300\n')
         ok = 0
         for i in sites:
             try:
@@ -418,25 +435,25 @@ class CanvasDnD(tk.Frame):
 
         f.close()
 
-    def drawFx(self, event):
+    def draw_fx_cig(self, event):
         if event.x > pct_width_laxis * width and event.x < pct_width_raxis * width and event.y > pct_top * height - 20 and event.y < pct_bot * height:
             self.c.create_oval(event.x - 4, event.y - 4, event.x + 4, event.y + 4, fill=dot_color, tag="Ceiling")
-            self.drawLine()
+            self.draw_cig_line()
             return points
 
-    def drawFx_vis(self, event):
+    def draw_fx_vis(self, event):
         if event.x > pct_width_laxis * width and event.x < pct_width_raxis * width and event.y > pct_top * height_vis and event.y < pct_bot * height_vis:
             self.cv.create_oval(event.x - 4, event.y - 4, event.x + 4, event.y + 4, fill=dot_color, tag="Visibility")
-            self.drawVisLine()
+            self.draw_vis_line()
             return points
 
-    def lt10(self, x):
+    def lt_ten_padding(self, x):
         if x < 10:
             return "0" + str(x)
         else:
             return str(x)
 
-    def formatTime(self, graphtime):
+    def format_time(self, graphtime):
         # (year,month,tafday,tafhour,tmin,jsec,wday,yday,dst) = time.gmtime(time.mktime(time.gmtime())+int(graphtime)*3600)
         (year, month, tafday, tafhour, tmin, jsec, wday, yday, dst) = time.gmtime(
             time.mktime(self.tafpackage) + int(graphtime) * 3600)
@@ -450,61 +467,61 @@ class CanvasDnD(tk.Frame):
             tafday = str(int(tafday))
         return tafday + tafhour
 
-    def formatCig(self, graphCig):
-        graphCig = int(graphCig / 100)
-        if graphCig < 10:
-            graphCig = '00' + str(int(round(graphCig)))
-        elif graphCig < 100:
-            if graphCig > 50:
-                graphCig = '0' + str(int(round(graphCig, -1)))
+    def format_cig(self, graph_ceiling):
+        graph_ceiling = int(graph_ceiling / 100)
+        if graph_ceiling < 10:
+            graph_ceiling = '00' + str(int(round(graph_ceiling)))
+        elif graph_ceiling < 100:
+            if graph_ceiling > 50:
+                graph_ceiling = '0' + str(int(round(graph_ceiling, -1)))
             else:
-                graphCig = '0' + str(int(graphCig))
-        elif graphCig >= 100 and graphCig < 110:
-            graphCig = '150'
-        elif graphCig >= 110 and graphCig < 115:
-            graphCig = '200'
-        elif graphCig >= 115 and graphCig < 119:
-            graphCig = '250'
-        elif graphCig >= 119:
-            graphCig = 'SKC'
+                graph_ceiling = '0' + str(int(graph_ceiling))
+        elif 100 <= graph_ceiling < 110:
+            graph_ceiling = '150'
+        elif 110 <= graph_ceiling < 115:
+            graph_ceiling = '200'
+        elif 115 <= graph_ceiling < 119:
+            graph_ceiling = '250'
+        elif graph_ceiling >= 119:
+            graph_ceiling = 'SKC'
         else:
-            graphCig = str(int(graphCig))
-        if graphCig == '000':
-            graphCig = '001'
-        return graphCig
+            graph_ceiling = str(int(graph_ceiling))
+        if graph_ceiling == '000':
+            graph_ceiling = '001'
+        return graph_ceiling
 
-    def formatVis(self, graphVis):
-        wxtype = self.wxpick.get()
-        if wxtype != '':
-            wxtype2 = ' ' + self.wxpick2.get()
+    def format_vis(self, graph_visibility):
+        wx_type = self.wxpick.get()
+        if wx_type != '':
+            wx_type_two = ' ' + self.wx_pick_two.get()
         else:
-            wxtype2 = '' + self.wxpick2.get()
+            wx_type_two = '' + self.wx_pick_two.get()
 
-        if graphVis <= 0.5 and wxtype == "BR":
-            wxtype = " FG"
-        if graphVis > 0.5 and wxtype == "FG":
-            wxtype = " BR"
-        if graphVis < 0.1:
-            graphVis = ' 0SM' + wxtype + wxtype2
-        elif graphVis < 0.25:
-            graphVis = ' M1/4SM' + wxtype + wxtype2
-        elif graphVis >= 0.25 and graphVis < 0.5:
-            graphVis = ' 1/4SM' + wxtype + wxtype2
-        elif graphVis >= 0.5 and graphVis < 0.75:
-            graphVis = ' 1/2SM ' + wxtype + wxtype2
-        elif graphVis >= 0.75 and graphVis < 1.0:
-            graphVis = ' 3/4SM' + wxtype + wxtype2
-        elif graphVis >= 1.0 and graphVis < 1.5:
-            graphVis = ' 1SM' + wxtype + wxtype2
-        elif graphVis >= 1.5 and graphVis < 2.0:
-            graphVis = ' 1 1/2SM' + wxtype + wxtype2
-        elif graphVis > 6.9:
-            graphVis = 'P6SM'
+        if graph_visibility <= 0.5 and wx_type == "BR":
+            wx_type = " FG"
+        if graph_visibility > 0.5 and wx_type == "FG":
+            wx_type = " BR"
+        if graph_visibility < 0.1:
+            graph_visibility = ' 0SM' + wx_type + wx_type_two
+        elif graph_visibility < 0.25:
+            graph_visibility = ' M1/4SM' + wx_type + wx_type_two
+        elif 0.25 <= graph_visibility < 0.5:
+            graph_visibility = ' 1/4SM' + wx_type + wx_type_two
+        elif 0.5 <= graph_visibility < 0.75:
+            graph_visibility = ' 1/2SM ' + wx_type + wx_type_two
+        elif 0.75 <= graph_visibility < 1.0:
+            graph_visibility = ' 3/4SM' + wx_type + wx_type_two
+        elif 1.0 <= graph_visibility < 1.5:
+            graph_visibility = ' 1SM' + wx_type + wx_type_two
+        elif 1.5 <= graph_visibility < 2.0:
+            graph_visibility = ' 1 1/2SM' + wx_type + wx_type_two
+        elif graph_visibility > 6.9:
+            graph_visibility = 'P6SM'
         else:
-            graphVis = str(int(graphVis)) + 'SM ' + wxtype + wxtype2
-        return graphVis
+            graph_visibility = str(int(graph_visibility)) + 'SM ' + wx_type + wx_type_two
+        return graph_visibility
 
-    def labelTaf(self):
+    def label_taf(self):
 
         taf = ''
         vis1 = ''
@@ -515,17 +532,17 @@ class CanvasDnD(tk.Frame):
         vis = []
         for index, i in enumerate(points):
             xy = self.c.coords(i)
-            x, y = self.fromGraphCoordtoTAF(xy[0] + 3, xy[1] + 3)
+            x, y = self.graph_coord_to_taf(xy[0] + 3, xy[1] + 3)
 
-            taftime = self.formatTime(x)
+            taftime = self.format_time(x)
             cigs.append([str(taftime), 'c', y])
             if index == 0:
                 cig1 = y
 
         for index, i in enumerate(vpoints):
             xy = self.cv.coords(i)
-            x, y = self.fromGraphCoordtoTAF_vis(xy[0] + 3, xy[1] + 3)
-            taftime = self.formatTime(x)
+            x, y = self.graph_coord_to_taf_vis(xy[0] + 3, xy[1] + 3)
+            taftime = self.format_time(x)
             vis.append([str(taftime), 'v', y])
             if index == 0:
                 vis1 = y
@@ -541,7 +558,7 @@ class CanvasDnD(tk.Frame):
 
             if index == 0:
                 # print i[0]
-                tafdata[i[0]] = Ddict(dict)
+                tafdata[i[0]] = KeyDict(dict)
                 tafdata[i[0]]['vis'] = vis1
                 tafdata[i[0]]['cig'] = cig1
 
@@ -549,12 +566,12 @@ class CanvasDnD(tk.Frame):
             else:
                 if i[0] != timecheck:
                     # print i[0]
-                    tafdata[i[0]] = Ddict(dict)
+                    tafdata[i[0]] = KeyDict(dict)
                     tafdata[i[0]]['vis'] = vis
                     tafdata[i[0]]['cig'] = cig
                     timecheck = i[0]
                 else:
-                    tafdata[i[0]] = Ddict(dict)
+                    tafdata[i[0]] = KeyDict(dict)
                     tafdata[i[0]]['vis'] = vis
                     tafdata[i[0]]['cig'] = cig
                     # print 'duplicate'
@@ -576,19 +593,21 @@ class CanvasDnD(tk.Frame):
         ##for index,i in enumerate(vpoints):
         for index, i in enumerate(mytaf):
             if index == 0:
-                taf = "TAF\n" + self.sitepick.get() + ' ' + self.lt10(day) + self.lt10(jhour) + self.lt10(
-                    jmin) + "Z " + self.lt10(day) + self.lt10(self.tafphour) + "/04" + self.lt10(
+                taf = "TAF\n" + self.sitepick.get() + ' ' + self.lt_ten_padding(day) + self.lt_ten_padding(
+                    jhour) + self.lt_ten_padding(
+                    jmin) + "Z " + self.lt_ten_padding(day) + self.lt_ten_padding(
+                    self.tafphour) + "/04" + self.lt_ten_padding(
                     self.tafphour) + " 00000KT "
-                myvis = self.formatVis(tafdata[mytaf[0]]['vis'])
-                mycig = self.formatCig(tafdata[mytaf[0]]['cig'])
+                myvis = self.format_vis(tafdata[mytaf[0]]['vis'])
+                mycig = self.format_cig(tafdata[mytaf[0]]['cig'])
                 if mycig != 'SKC':
                     taf = taf + ' ' + myvis + ' ' + self.skypick.get() + mycig + "\n"
                 else:
                     taf = taf + ' ' + myvis + ' ' + mycig + "\n"
             else:
 
-                myvis = self.formatVis(tafdata[mytaf[index]]['vis'])
-                mycig = self.formatCig(tafdata[mytaf[index]]['cig'])
+                myvis = self.format_vis(tafdata[mytaf[index]]['vis'])
+                mycig = self.format_cig(tafdata[mytaf[index]]['cig'])
                 if mycig != 'SKC':
                     taf = taf + '   FM' + mytaf[
                         index] + '00 ' + mywind + 'KT ' + myvis + ' ' + self.skypick.get() + mycig + "\n"
@@ -598,7 +617,7 @@ class CanvasDnD(tk.Frame):
         self.taflabel.configure(text=taf + '=')
         return taf
 
-    def deletePoints(self):
+    def delete_points(self):
         cigs = self.c.find_withtag("Ceiling")
         for i in cigs:
             self.c.delete(i)
@@ -607,7 +626,7 @@ class CanvasDnD(tk.Frame):
         for i in vis:
             self.cv.delete(i)
 
-    def deletePoint(self, event):
+    def delete_point_cig(self, event):
         point = self.c.find_closest(event.x, event.y)
         cigs = self.c.find_withtag("Ceiling")
         foundpoint = 0
@@ -616,17 +635,17 @@ class CanvasDnD(tk.Frame):
             tempindex.append(self.c.coords(i)[0])
             if i == point[0]:
                 self.c.delete(i)
-                self.drawLine()
+                self.draw_cig_line()
 
-    def deletePoint_vis(self, event):
+    def delete_point_vis(self, event):
         point = self.cv.find_closest(event.x, event.y)
         vis = self.cv.find_withtag("Visibility")
         for i in vis:
             if i == point[0]:
                 self.cv.delete(i)
-                self.drawVisLine()
+                self.draw_vis_line()
 
-    def drawLine(self):
+    def draw_cig_line(self):
         # try:
         line = self.c.find_withtag("line")
         self.c.delete(line)
@@ -644,10 +663,10 @@ class CanvasDnD(tk.Frame):
             self.test = self.c.create_line(plot, tags="line", fill=fx_color, width=2.0)
         except:
             pass
-        self.labelTaf()
+        self.label_taf()
         self.c.tag_raise("Ceiling")
 
-    def drawVisLine(self):
+    def draw_vis_line(self):
         line = self.cv.find_withtag("line_vis")
         self.cv.delete(line)
         points = self.cv.find_withtag("Visibility")
@@ -664,24 +683,28 @@ class CanvasDnD(tk.Frame):
             self.test = self.cv.create_line(plot, tags="line_vis", fill=fx_color, width=2.0)
         except:
             pass
-        self.labelTaf()
+        self.label_taf()
         self.cv.tag_raise("Visibility")
 
-    def toGraphCoordfromTAF_vis(self, x, y):
+    def graph_coord_from_taf_vis(self, x, y):
         return x * pct_graph_width * width / 24 + pct_width_laxis * width, abs(
             graph_height_vis - ((graph_height_vis * math.log10(y) / 2) + graph_height_vis / 2.0)) + pct_top * height_vis
 
-    def fromGraphCoordtoTAF_vis(self, x, y):
+    def graph_coord_to_taf_vis(self, x, y):
         gh = graph_height_vis
         # funny stuff with converting from log to linear scale set indices from 0 to 2 then transform and then set them back
         exponent = abs(2 - (((((y - pct_top * height_vis + gh) * 2) / gh) - 3) + 1)) - 1
         return ((x - pct_width_laxis * width) * 24) / (pct_graph_width * width), math.pow(10, exponent)
 
-    def toGraphCoordfromTAF(self, x, y):
+    def graph_coord_from_taf(self, x, y):
+        """
+
+        :rtype : object
+        """
         return x * pct_graph_width * width / 24 + pct_width_laxis * width, abs(
             graph_height - (graph_height * (math.log10(y) - 2) / 2)) + pct_top * height
 
-    def fromGraphCoordtoTAF(self, x, y):
+    def graph_coord_to_taf(self, x, y):
         gh = graph_height
         exponent = 2 - ((((y - pct_top * height + gh) * 2) / gh) - 2)
         return ((x - pct_width_laxis * width) * 24) / (pct_graph_width * width), math.pow(10, exponent) * 100
@@ -701,7 +724,7 @@ class CanvasDnD(tk.Frame):
             root.config(cursor="dotbox")
             cnv = event.widget
             xy = cnv.canvasx(event.x) - 1.3, cnv.canvasy(event.y) - 1.3
-            points = event.widget.coords(tk.CURRENT)
+            points = event.widget.coords(Tk.CURRENT)
             anchors = copy.copy(points[:2])
 
             for idx in range(len(points)):
@@ -709,15 +732,15 @@ class CanvasDnD(tk.Frame):
                 zone = anchors[idx % 2]
                 points[idx] = points[idx] - zone + mouse
 
-            apply(event.widget.coords, [tk.CURRENT] + points)
-            self.drawLine()
+            apply(event.widget.coords, [Tk.CURRENT] + points)
+            self.draw_cig_line()
 
     def motion_vis(self, event):
         if event.x > pct_width_laxis * width and event.x < pct_width_raxis * width and event.y > pct_top * height_vis and event.y < pct_bot * height_vis:
             root.config(cursor="dotbox")
             cnv = event.widget
             xy = cnv.canvasx(event.x) - 1.3, cnv.canvasy(event.y) - 1.3
-            points = event.widget.coords(tk.CURRENT)
+            points = event.widget.coords(Tk.CURRENT)
             anchors = copy.copy(points[:2])
 
             for idx in range(len(points)):
@@ -725,8 +748,8 @@ class CanvasDnD(tk.Frame):
                 zone = anchors[idx % 2]
                 points[idx] = points[idx] - zone + mouse
 
-            apply(event.widget.coords, [tk.CURRENT] + points)
-            self.drawVisLine()
+            apply(event.widget.coords, [Tk.CURRENT] + points)
+            self.draw_vis_line()
 
     def leave(self, event):
         self.loc = 0
@@ -739,7 +762,7 @@ class CanvasDnD(tk.Frame):
     def chkup(self, event):
         event.widget.unbind("<Motion>")
         root.config(cursor="crosshair")
-        self.target = event.widget.find_withtag(tk.CURRENT)
+        self.target = event.widget.find_withtag(Tk.CURRENT)
 
         if self.loc:  # is button released in same widget as pressed?
             self.up(event)
@@ -748,23 +771,23 @@ class CanvasDnD(tk.Frame):
 
     def up(self, event):
         event.widget.unbind("<Motion>")
-        if (self.target == event.widget.find_withtag(tk.CURRENT)):
+        if (self.target == event.widget.find_withtag(Tk.CURRENT)):
             pass
         else:
-            event.widget.itemconfigure(tk.CURRENT, fill="blue")
+            event.widget.itemconfigure(Tk.CURRENT, fill="blue")
             self.master.update()
             time.sleep(.1)
 
-# Importing TAF ############
+            # Importing TAF ############
 
-    def readTAF(self):
+    def read_taf(self):
         try:
-            self.deletePoints()
+            self.delete_points()
         except:
             pass
 
         _id = self.sitepick.get()
-        self.taf = Ddict(dict)
+        self.taf = KeyDict(dict)
         try:
             if self.saved[_id] == 1:
                 print "ALREADY SAVED"
@@ -782,7 +805,6 @@ class CanvasDnD(tk.Frame):
                 print "Could not open " + tafdir2
                 return
 
-
         lines = log.readlines()
         self.site = ''
         found = 0
@@ -797,15 +819,15 @@ class CanvasDnD(tk.Frame):
                 if t:
                     found = 1
                 if found == 1:
-                    cig = self.detCig(line)
+                    cig = self.determine_cig(line)
                     end = re.findall('=', line.upper())
         log.close()
 
-        self.plotTAF()
-        self.plotTAF_vis()
+        self.plot_taf()
+        self.plot_taf_vis()
         return
 
-    def plotTAF(self):
+    def plot_taf(self):
         _id = self.sitepick.get()
         print self.taf[_id]
         for index, i in enumerate(self.taf[_id]['fxtime']):
@@ -815,7 +837,7 @@ class CanvasDnD(tk.Frame):
             except:
                 x, y = temptime, float('150')
 
-            x1, y1 = self.toGraphCoordfromTAF(x, y)
+            x1, y1 = self.graph_coord_from_taf(x, y)
             x1 = pct_width_laxis * width + x1
             y1 = y1 - pct_bot * height + pct_top * height
 
@@ -823,26 +845,26 @@ class CanvasDnD(tk.Frame):
             points.append(y1)
             self.c.create_oval(x1 - 4, y1 - 4, x1 + 4, y1 + 4, fill=dot_color, tag="Ceiling")
 
-        self.drawLine()
+        self.draw_cig_line()
         return points
 
-    def plotTAF_vis(self):
+    def plot_taf_vis(self):
         _id = self.sitepick.get()
 
         for index, i in enumerate(self.taf[_id]['fxtime']):
             x, y = self.taf[_id]['fxtime'][index], float(self.taf[_id]['vis'][index])
-            x1, y1 = self.toGraphCoordfromTAF_vis(x, y)
+            x1, y1 = self.graph_coord_from_taf_vis(x, y)
             x1 = pct_width_laxis * width + x1
 
             points.append(x1)
             points.append(y1)
             self.cv.create_oval(x1 - 4, y1 - 4, x1 + 4, y1 + 4, fill=dot_color, tag="Visibility")
 
-        self.drawVisLine()
+        self.draw_vis_line()
         self.c.tag_raise("Ceiling")
         return points
 
-    def detCig(self, line):
+    def determine_cig(self, line):
         if re.match("FM|K\w{3}|TEMPO", line):
             pass
         else:
@@ -851,10 +873,11 @@ class CanvasDnD(tk.Frame):
         date = re.search('\d{6}Z (\d{2})(\d{2})\/(\d{2})(\d{2})', line.upper())
         if date:
             # 24 hours from now
-            (_year, _month, _day, _hour, _min, _sec, _wday, _yday, _dst) = time.gmtime(time.mktime(time.gmtime()) + 86400)
+            (_year, _month, _day, _hour, _min, _sec, _wday, _yday, _dst) = time.gmtime(
+                time.mktime(time.gmtime()) + 86400)
 
-            self.end_day = str(self.lt10(_day))
-            self.end_month = str(self.lt10(_month))
+            self.end_day = str(self.lt_ten_padding(_day))
+            self.end_month = str(self.lt_ten_padding(_month))
             self.end_year = str(_year)
             YYYYmm = self.end_year + self.end_month
 
@@ -864,8 +887,8 @@ class CanvasDnD(tk.Frame):
             tafend = time.strptime(YYYYmm + self.tafend_group, "%Y%m%d%H")
 
             self.tafbegin = time.gmtime(time.mktime(tafend) - 86400)
-            self.begin_day = str(self.lt10(self.tafbegin[2]))
-            self.begin_month = str(self.lt10(self.tafbegin[1]))
+            self.begin_day = str(self.lt_ten_padding(self.tafbegin[2]))
+            self.begin_month = str(self.lt_ten_padding(self.tafbegin[1]))
             self.begin_year = str(self.tafbegin[0])
 
         t = re.findall('(\d{6})Z', line.upper())
@@ -879,17 +902,16 @@ class CanvasDnD(tk.Frame):
         if t:
             ti = self.tafbegin_group  # t[0][0:4]
             hour_fm_tafbegin = (time.mktime(
-                time.strptime(self.begin_year + self.begin_month + self.lt10(ti), "%Y%m%d%H")) - time.mktime(
+                time.strptime(self.begin_year + self.begin_month + self.lt_ten_padding(ti), "%Y%m%d%H")) - time.mktime(
                 time.strptime(self.begin_year + self.begin_month + self.tafbegin_group, "%Y%m%d%H"))) / 3600
 
             stn = re.findall('(K\w{3}) ', line.upper())
             self.site = stn[0]
-            self.taf[self.site] = Ddict(dict)
+            self.taf[self.site] = KeyDict(dict)
             self.taf[self.site]['fxtime'] = [hour_fm_tafbegin]
             self.taf[self.site]['cig'] = []
             self.taf[self.site]['vis'] = []
             self.taf[self.site]['wnd'] = []
-
 
         if ttime:
 
@@ -906,8 +928,8 @@ class CanvasDnD(tk.Frame):
             else:
                 self.taf[self.site]['fxtime'].append(hour_fm_tafbegin)
 
-            # if tempo:
-            # self.taf[self.site]['fxtime'].append([tempo[0][0]+'00',tempo[0][1]+'00'])
+                # if tempo:
+                # self.taf[self.site]['fxtime'].append([tempo[0][0]+'00',tempo[0][1]+'00'])
 
         tempcig = []
         for ceiling in c:
@@ -936,7 +958,7 @@ class CanvasDnD(tk.Frame):
         return
 
 
-root = tk.Tk()
+root = Tk.Tk()
 root.title("Draw Your TAF!")
-CanvasDnD(root).grid(row=0, column=0)
+TafCanvas(root).grid(row=0, column=0)
 root.mainloop()
