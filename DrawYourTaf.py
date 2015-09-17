@@ -17,7 +17,7 @@ except ImportError:
 
 # Configure
 
-tafout = './tafout/'
+taf_out_file = './taf_out_file/'
 tafdir2 = './tafout2/'
 sites = ["KCRW", "KHTS", "KPKB", "KCKB", "KEKN", "KBKW"]
 
@@ -42,7 +42,6 @@ graph_height_vis = pct_graph_height * height_vis
 # heights = ["080","031","020","010","006","002","001"]
 heights = ["100", "030", "020", "010", "005", "001"]
 visbys = ["10", "6", "3", "1", "0.5", "0.25", "0.1"]
-points = []
 
 tag1 = "theline"
 
@@ -64,8 +63,8 @@ _ValidVsby = {
 
 (year, month, day, jhour, jmin, jsec, wday, yday, dst) = time.gmtime()
 
-if not os.path.exists(tafout):
-    os.makedirs(tafout)
+if not os.path.exists(taf_out_file):
+    os.makedirs(taf_out_file)
 if not os.path.exists(tafdir2):
     os.makedirs(tafdir2)
 
@@ -161,12 +160,11 @@ class TafCanvas(Tk.Frame):
 
         self.tafpackage = (year, month, tafday, self.tafphour, tmin, jsec, wday, yday, dst)
         print tafhour
-        # sys.exit()
 
         for i in range(25):
-            (year, month, tafday, tafhour, tmin, jsec, wday, yday, dst) = time.gmtime(
-                time.mktime(self.tafpackage) + i * 3600)
-            # tafhour = self.tafphour + i
+            (year, month, tafday, tafhour, tmin, jsec, wday, yday, dst) = \
+                time.gmtime(time.mktime(self.tafpackage) + i * 3600)
+
             # time and vertical lines/X-axis Legend
             self.c.create_text(i * pct_graph_width * width / 24 + pct_width_laxis * width, height * 0.05, text=tafhour,
                                fill=axis_color)
@@ -299,10 +297,10 @@ class TafCanvas(Tk.Frame):
         self.Frame = Tk.Frame(self.Frame_right, bd=2, relief='groove', padx=5, pady=5, width=width)
         self.Frame.grid(row=1, column=0, pady=40)
 
-        self.taflabel = Tk.Label(self.Frame_right,
+        self.taf_label = Tk.Label(self.Frame_right,
                                  text="Click on graphs \nto generate TAF\n\nTAF will show up here after\n you have both visibility and ceilings.\n\n1) Left click will place points\n2) Middle click to drag/move\n3) Right click to delete",
                                  bd=3, bg='white', relief="raised", anchor=Tk.W, justify=Tk.LEFT)
-        self.taflabel.grid(row=0, column=0, sticky=Tk.W, padx=10)
+        self.taf_label.grid(row=0, column=0, sticky=Tk.W, padx=10)
 
 
         # self.cloud_level.set('Low')
@@ -358,7 +356,7 @@ class TafCanvas(Tk.Frame):
                                        menubutton_textvariable=self.wxpick,
                                        items=wxarr,
                                        initialitem="",
-                                       command=lambda i=0: self.label_taf()
+                                       command=lambda item=0: self.label_taf()
 
                                        )
         self.wxoption.grid(row=3, column=1)
@@ -368,7 +366,7 @@ class TafCanvas(Tk.Frame):
                                         menubutton_textvariable=self.wx_pick_two,
                                         items=wxarr,
                                         initialitem="",
-                                        command=lambda i=0: self.label_taf()
+                                        command=lambda item=0: self.label_taf()
                                         )
         self.wx2option.grid(row=3, column=2)
 
@@ -377,7 +375,7 @@ class TafCanvas(Tk.Frame):
                                          menubutton_textvariable=self.sitepick,
                                          items=sites,
                                          initialitem="KCRW",
-                                         command=lambda i=0: self.read_taf()
+                                         command=lambda item=0: self.read_taf()
                                          )
         self.siteoption.grid(row=0, column=1)
 
@@ -387,8 +385,8 @@ class TafCanvas(Tk.Frame):
         self.save_taf = Tk.Button(self.Frame, text="Combine TAFs", command=self.combine_taf, bg="#DCFF92")
         self.save_taf.grid(row=5, column=1, pady=0)
 
-        statuslabel = Tk.Label(self.Frame_right, text="Status:", bd=0, relief="flat", anchor=Tk.W, justify=Tk.LEFT)
-        statuslabel.grid(row=2, column=0, sticky=Tk.W)
+        status_label = Tk.Label(self.Frame_right, text="Status:", bd=0, relief="flat", anchor=Tk.W, justify=Tk.LEFT)
+        status_label.grid(row=2, column=0, sticky=Tk.W)
 
         self.sitelabels = {}
         for index, site in enumerate(sites):
@@ -402,9 +400,9 @@ class TafCanvas(Tk.Frame):
     def clean_taf_directory(self):
         for i in sites:
             try:
-                os.remove(tafout + 'TAF.' + i)
+                os.remove(taf_out_file + 'TAF.' + i)
             except:
-                print "Could not remove " + tafout + 'TAF.' + i
+                print "Could not remove " + taf_out_file + 'TAF.' + i
 
     def save_taf(self):
         taf = self.label_taf() + '=\n\n'
@@ -412,18 +410,18 @@ class TafCanvas(Tk.Frame):
         _id = self.sitepick.get()
         self.saved[_id] = 1
         self.sitelabels[_id].configure(bg='light green', fg='black')
-        f = open(tafout + 'TAF.' + _id, 'w')
+        f = open(taf_out_file + 'TAF.' + _id, 'w')
         f.write(taf)
         f.close()
         print self.saved
 
     def combine_taf(self):
-        f = open(tafout + 'TAF', 'w')
+        f = open(taf_out_file + 'TAF', 'w')
         # f.write('FTUS46 KPQR 202300\n')
         ok = 0
         for i in sites:
             try:
-                f2 = open(tafout + 'TAF.' + i, 'r')
+                f2 = open(taf_out_file + 'TAF.' + i, 'r')
                 for i2 in f2.readlines():
                     f.write(i2)
                 f2.close()
@@ -439,13 +437,11 @@ class TafCanvas(Tk.Frame):
         if event.x > pct_width_laxis * width and event.x < pct_width_raxis * width and event.y > pct_top * height - 20 and event.y < pct_bot * height:
             self.c.create_oval(event.x - 4, event.y - 4, event.x + 4, event.y + 4, fill=dot_color, tag="Ceiling")
             self.draw_cig_line()
-            return points
 
     def draw_fx_vis(self, event):
         if event.x > pct_width_laxis * width and event.x < pct_width_raxis * width and event.y > pct_top * height_vis and event.y < pct_bot * height_vis:
             self.cv.create_oval(event.x - 4, event.y - 4, event.x + 4, event.y + 4, fill=dot_color, tag="Visibility")
             self.draw_vis_line()
-            return points
 
     def lt_ten_padding(self, x):
         if x < 10:
@@ -454,7 +450,6 @@ class TafCanvas(Tk.Frame):
             return str(x)
 
     def format_time(self, graphtime):
-        # (year,month,tafday,tafhour,tmin,jsec,wday,yday,dst) = time.gmtime(time.mktime(time.gmtime())+int(graphtime)*3600)
         (year, month, tafday, tafhour, tmin, jsec, wday, yday, dst) = time.gmtime(
             time.mktime(self.tafpackage) + int(graphtime) * 3600)
         if tafhour < 10:
@@ -590,7 +585,6 @@ class TafCanvas(Tk.Frame):
 
         mywind = '00000'
 
-        ##for index,i in enumerate(vpoints):
         for index, i in enumerate(mytaf):
             if index == 0:
                 taf = "TAF\n" + self.sitepick.get() + ' ' + self.lt_ten_padding(day) + self.lt_ten_padding(
@@ -598,23 +592,23 @@ class TafCanvas(Tk.Frame):
                     jmin) + "Z " + self.lt_ten_padding(day) + self.lt_ten_padding(
                     self.tafphour) + "/04" + self.lt_ten_padding(
                     self.tafphour) + " 00000KT "
-                myvis = self.format_vis(tafdata[mytaf[0]]['vis'])
-                mycig = self.format_cig(tafdata[mytaf[0]]['cig'])
-                if mycig != 'SKC':
-                    taf = taf + ' ' + myvis + ' ' + self.skypick.get() + mycig + "\n"
+                my_vis = self.format_vis(tafdata[mytaf[0]]['vis'])
+                my_cig = self.format_cig(tafdata[mytaf[0]]['cig'])
+                if my_cig != 'SKC':
+                    taf = taf + ' ' + my_vis + ' ' + self.skypick.get() + my_cig + "\n"
                 else:
-                    taf = taf + ' ' + myvis + ' ' + mycig + "\n"
+                    taf = taf + ' ' + my_vis + ' ' + my_cig + "\n"
             else:
 
-                myvis = self.format_vis(tafdata[mytaf[index]]['vis'])
-                mycig = self.format_cig(tafdata[mytaf[index]]['cig'])
-                if mycig != 'SKC':
+                my_vis = self.format_vis(tafdata[mytaf[index]]['vis'])
+                my_cig = self.format_cig(tafdata[mytaf[index]]['cig'])
+                if my_cig != 'SKC':
                     taf = taf + '   FM' + mytaf[
-                        index] + '00 ' + mywind + 'KT ' + myvis + ' ' + self.skypick.get() + mycig + "\n"
+                        index] + '00 ' + mywind + 'KT ' + my_vis + ' ' + self.skypick.get() + my_cig + "\n"
                 else:
-                    taf = taf + '   FM' + mytaf[index] + '00 ' + mywind + 'KT ' + myvis + ' ' + mycig + "\n"
+                    taf = taf + '   FM' + mytaf[index] + '00 ' + mywind + 'KT ' + my_vis + ' ' + my_cig + "\n"
 
-        self.taflabel.configure(text=taf + '=')
+        self.taf_label.configure(text=taf + '=')
         return taf
 
     def delete_points(self):
@@ -630,9 +624,9 @@ class TafCanvas(Tk.Frame):
         point = self.c.find_closest(event.x, event.y)
         cigs = self.c.find_withtag("Ceiling")
         foundpoint = 0
-        tempindex = []
+        temp_index = []
         for i in cigs:
-            tempindex.append(self.c.coords(i)[0])
+            temp_index.append(self.c.coords(i)[0])
             if i == point[0]:
                 self.c.delete(i)
                 self.draw_cig_line()
@@ -692,7 +686,8 @@ class TafCanvas(Tk.Frame):
 
     def graph_coord_to_taf_vis(self, x, y):
         gh = graph_height_vis
-        # funny stuff with converting from log to linear scale set indices from 0 to 2 then transform and then set them back
+        
+        # funny - converting from log to linear scale set indices from 0 to 2 then transform and then set them back
         exponent = abs(2 - (((((y - pct_top * height_vis + gh) * 2) / gh) - 3) + 1)) - 1
         return ((x - pct_width_laxis * width) * 24) / (pct_graph_width * width), math.pow(10, exponent)
 
@@ -791,8 +786,8 @@ class TafCanvas(Tk.Frame):
         try:
             if self.saved[_id] == 1:
                 print "ALREADY SAVED"
-                print "Reading...", tafout + 'TAF.' + _id
-                log = open(tafout + 'TAF.' + _id, 'r')
+                print "Reading...", taf_out_file + 'TAF.' + _id
+                log = open(taf_out_file + 'TAF.' + _id, 'r')
         except:
             print "NOPE NOT SAVED YET"
             print "Reading...", tafdir2
@@ -846,7 +841,6 @@ class TafCanvas(Tk.Frame):
             self.c.create_oval(x1 - 4, y1 - 4, x1 + 4, y1 + 4, fill=dot_color, tag="Ceiling")
 
         self.draw_cig_line()
-        return points
 
     def plot_taf_vis(self):
         _id = self.sitepick.get()
@@ -862,7 +856,6 @@ class TafCanvas(Tk.Frame):
 
         self.draw_vis_line()
         self.c.tag_raise("Ceiling")
-        return points
 
     def determine_cig(self, line):
         if re.match("FM|K\w{3}|TEMPO", line):
@@ -870,7 +863,7 @@ class TafCanvas(Tk.Frame):
         else:
             return
 
-        date = re.search('\d{6}Z (\d{2})(\d{2})\/(\d{2})(\d{2})', line.upper())
+        date = re.search('\d{6}Z (\d{2})(\d{2})/(\d{2})(\d{2})', line.upper())
         if date:
             # 24 hours from now
             (_year, _month, _day, _hour, _min, _sec, _wday, _yday, _dst) = time.gmtime(
