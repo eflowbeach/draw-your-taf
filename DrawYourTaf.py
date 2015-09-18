@@ -417,38 +417,29 @@ class TafCanvas(Tk.Frame):
         self.draw_model(hrrr[site], "blue", "hrrr", show)
 
     def draw_model(self, data, color, model, show):
-        # try:
         line = self.cv.find_withtag(model)
         self.cv.delete(line)
         if show == 0:
             return
+        # Find the epoch start of the taf package
         epochStart = calendar.timegm(self.tafpackage)
         plot = []
-        for hour in data:
-            x = (hour[0] - epochStart) / 3600
-            y = hour[1]
+        for period in data:
+            # Find the difference between the model value and the start of the package
+            # Epoch seconds is the 0th element
+            x = (period[0] - epochStart) / 3600
+
+            # Visibility 1
+            y = period[1]
+
+            # Ceiling 2
             if x>=0:
                 x1, y1 = self.graph_coord_from_taf_vis(x,y)
                 plot.append(x1)
                 plot.append(y1)
 
-        self.cv.create_line(plot, tags=model, fill=color, width=2.0)
-        # points = self.c.find_withtag("Ceiling")
-
-        # for i in points:
-        #     coords = self.c.coords(i)
-        #     if len(plot) > 1:
-        #         plot.append(coords[0] + 3)
-        #         plot.append(plot[len(plot) - 2])
-        #     plot.append(coords[0] + 3)
-        #     plot.append(coords[1] + 5)
-        #
-        # try:
-        #     self.test = self.c.create_line(plot, tags=model, fill=color, width=2.0)
-        # except:
-        #     pass
-        # self.label_taf()
-        # self.c.tag_raise("Ceiling")
+        if len(plot)>0:
+            self.cv.create_line(plot, tags=model, fill=color, width=2.0)
 
     def clean_taf_directory(self):
         for i in sites:
