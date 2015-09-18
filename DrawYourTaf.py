@@ -1,5 +1,5 @@
-import sys
 import os
+import sys
 import time
 import calendar
 import copy
@@ -7,6 +7,7 @@ import math
 import Tkinter as Tk
 import tkMessageBox
 import re
+import cPickle as pickle
 
 try:
     import Pmw
@@ -19,7 +20,12 @@ except ImportError:
 # Configure
 taf_out_file = './taf_out_file/'
 tafdir2 = './tafout2/'
+hrrr_file = './modeldata/hrrr.pickle'
 sites = ["KCRW", "KHTS", "KPKB", "KCKB", "KEKN", "KBKW"]
+
+
+
+
 
 width = 800
 height = 300
@@ -66,6 +72,7 @@ if not os.path.exists(taf_out_file):
 if not os.path.exists(tafdir2):
     os.makedirs(tafdir2)
 
+
 class KeyDict(dict):
     def __init__(self, default=None):
         super(KeyDict, self).__init__()
@@ -76,6 +83,7 @@ class KeyDict(dict):
             self[key] = self.default()
         return dict.__getitem__(self, key)
 
+
 class TafCanvas(Tk.Frame):
     def __init__(self, master):
         self.master = master
@@ -83,8 +91,8 @@ class TafCanvas(Tk.Frame):
         self.site = ''
 
         self.tafbegin_group, self.tafend_group, self.begin_month, self.begin_day, self.begin_year, self.end_month, \
-            self.end_day, self.end_year = '', '', '', '', '', '', '', ''
-        
+        self.end_day, self.end_year = '', '', '', '', '', '', '', ''
+
         # Set up dictionaries
         self.rad = {}
         self.saved = {}
@@ -154,7 +162,7 @@ class TafCanvas(Tk.Frame):
         elif 0 <= taf_hour < 6:
             self.taf_package_hour = 0
 
-        self.tafpackage = (year, month, taf_day, self.taf_package_hour, tmin, jsec, wday, yday, dst)
+        self.tafpackage = (year, month, taf_day, self.taf_package_hour, 0, 0, wday, yday, dst)
         print "TAF HOUR:", taf_hour, self.taf_package_hour
 
         # Grid Labels
@@ -298,8 +306,8 @@ class TafCanvas(Tk.Frame):
         self.Frame.grid(row=1, column=0, pady=40)
 
         self.taf_label = Tk.Label(self.Frame_right,
-                                 text="Click on graphs \nto generate TAF\n\nTAF will show up here after\n you have both visibility and ceilings.\n\n1) Left click will place points\n2) Middle click to drag/move\n3) Right click to delete",
-                                 bd=3, bg='white', relief="raised", anchor=Tk.W, justify=Tk.LEFT)
+                                  text="Click on graphs \nto generate TAF\n\nTAF will show up here after\n you have both visibility and ceilings.\n\n1) Left click will place points\n2) Middle click to drag/move\n3) Right click to delete",
+                                  bd=3, bg='white', relief="raised", anchor=Tk.W, justify=Tk.LEFT)
         self.taf_label.grid(row=0, column=0, sticky=Tk.W, padx=10)
 
 
@@ -382,14 +390,65 @@ class TafCanvas(Tk.Frame):
         status_label = Tk.Label(self.Frame_right, text="Status:", bd=0, relief="flat", anchor=Tk.W, justify=Tk.LEFT)
         status_label.grid(row=2, column=0, sticky=Tk.W)
 
+        # Site Labels
         self.sitelabels = {}
         for index, site in enumerate(sites):
             self.sitelabels[site] = Tk.Label(self.Frame_right, text=" " + site + " ", bd=2, fg='black', bg='#B2B4A8',
                                              relief="raised", anchor=Tk.W, justify=Tk.LEFT)
             self.sitelabels[site].grid(row=index + 3, column=0, sticky=Tk.W)
 
+        # Model Checkboxes
+        self.hrrr = Tk.IntVar()
+        cb_hrrr = Tk.Checkbutton(
+            self.Frame_right, text="HRRR",
+            variable=self.hrrr,
+            command=self.show_hrrr)
+        cb_hrrr.grid(row=3, column=1, sticky=Tk.W)
+
+
+
         self.clean_taf_directory()
         self.read_taf()
+
+    def show_hrrr(self, event=None):
+        show = self.hrrr.get()
+        site = self.sitepick.get()
+        hrrr = pickle.load(open(hrrr_file, "rb"))
+        self.draw_model(hrrr[site], "blue", "hrrr", show)
+
+    def draw_model(self, data, color, model, show):
+        # try:
+        line = self.cv.find_withtag(model)
+        self.cv.delete(line)
+        if show == 0:
+            return
+        epochStart = calendar.timegm(self.tafpackage)
+        plot = []
+        for hour in data:
+            x = (hour[0] - epochStart) / 3600
+            y = hour[1]
+            if x>=0:
+                x1, y1 = self.graph_coord_from_taf_vis(x,y)
+                plot.append(x1)
+                plot.append(y1)
+
+        self.cv.create_line(plot, tags=model, fill=color, width=2.0)
+        # points = self.c.find_withtag("Ceiling")
+
+        # for i in points:
+        #     coords = self.c.coords(i)
+        #     if len(plot) > 1:
+        #         plot.append(coords[0] + 3)
+        #         plot.append(plot[len(plot) - 2])
+        #     plot.append(coords[0] + 3)
+        #     plot.append(coords[1] + 5)
+        #
+        # try:
+        #     self.test = self.c.create_line(plot, tags=model, fill=color, width=2.0)
+        # except:
+        #     pass
+        # self.label_taf()
+        # self.c.tag_raise("Ceiling")
 
     def clean_taf_directory(self):
         for i in sites:
@@ -443,8 +502,7 @@ class TafCanvas(Tk.Frame):
             return str(x)
 
     def format_time(self, graphtime):
-        (year, month, taf_day, taf_hour, tmin, jsec, wday, yday, dst) = time.gmtime(
-            time.mktime(self.tafpackage) + int(graphtime) * 3600)
+        (year, month, taf_day, taf_hour, tmin, jsec, wday, yday, dst) = time.gmtime(calendar.timegm(self.tafpackage) + int(graphtime) * 3600)
         if taf_hour < 10:
             taf_hour = "0" + str(int(taf_hour))
         else:
@@ -596,8 +654,7 @@ class TafCanvas(Tk.Frame):
                 my_vis = self.format_vis(tafdata[mytaf[index]]['vis'])
                 my_cig = self.format_cig(tafdata[mytaf[index]]['cig'])
                 if my_cig != 'SKC':
-                    taf = taf + '   FM' + mytaf[
-                        index] + '00 ' + mywind + 'KT ' + my_vis + ' ' + self.skypick.get() + my_cig + "\n"
+                    taf = taf + '   FM' + mytaf[index] + '00 ' + mywind + 'KT ' + my_vis + ' ' + self.skypick.get() + my_cig + "\n"
                 else:
                     taf = taf + '   FM' + mytaf[index] + '00 ' + mywind + 'KT ' + my_vis + ' ' + my_cig + "\n"
 
@@ -687,16 +744,12 @@ class TafCanvas(Tk.Frame):
 
     def graph_coord_to_taf_vis(self, x, y):
         gh = graph_height_vis
-        
+
         # funny - converting from log to linear scale set indices from 0 to 2 then transform and then set them back
         exponent = abs(2 - (((((y - pct_top * height_vis + gh) * 2) / gh) - 3) + 1)) - 1
         return ((x - pct_width_laxis * width) * 24) / (pct_graph_width * width), math.pow(10, exponent)
 
     def graph_coord_from_taf(self, x, y):
-        """
-
-        :rtype : object
-        """
         return x * pct_graph_width * width / 24 + pct_width_laxis * width, abs(
             graph_height - (graph_height * (math.log10(y) - 2) / 2)) + pct_top * height
 
@@ -844,6 +897,7 @@ class TafCanvas(Tk.Frame):
         _id = self.sitepick.get()
 
         for index, i in enumerate(self.taf[_id]['fxtime']):
+            print "fxtime",self.taf[_id]['fxtime'][index]
             x, y = self.taf[_id]['fxtime'][index], float(self.taf[_id]['vis'][index])
             x1, y1 = self.graph_coord_from_taf_vis(x, y)
             x1 = pct_width_laxis * width + x1
